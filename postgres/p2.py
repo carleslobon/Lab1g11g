@@ -3,7 +3,6 @@ from config import load_config
 from transformers import AutoTokenizer, AutoModel
 import torch
 import torch.nn.functional as F
-import psycopg2
 
 def mean_pooling(model_output, attention_mask):
     token_embeddings = model_output[0] #First element of model_output contains all token embeddings
