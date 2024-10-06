@@ -3,6 +3,8 @@ from config import load_config
 from transformers import AutoTokenizer, AutoModel
 import torch
 import torch.nn.functional as F
+import time
+import numpy as np
 
 def mean_pooling(model_output, attention_mask):
     token_embeddings = model_output[0] #First element of model_output contains all token embeddings
@@ -45,12 +47,13 @@ for sentence in sentences_to_process:
     embedding = mean_pooling(model_output, encoded_input['attention_mask'])
     embeddings.append((sentence, embedding))
 
+# List to store computation times
+computation_times = []
+
 #Compute the top-2 most similar sentences (among all other sentences) for each of them using two different distance metrics
 for original_sentence, embedding in embeddings:
-    #Convert each sentence to Float[]
     float_embedding = embedding.numpy().flatten().tolist()
     
-    # Select all sentences and embeddings from the database
     cursor.execute("SELECT sentence, embedding FROM sentences")
     all_sentences = cursor.fetchall()
     
@@ -59,6 +62,8 @@ for original_sentence, embedding in embeddings:
     min_euclidean_distance = float('inf')
     max_cosine_similarity = -float('inf')
     
+    start_time = time.time()
+    
     for db_sentence, db_embedding in all_sentences:
         if db_sentence == original_sentence:
             continue
@@ -66,7 +71,6 @@ for original_sentence, embedding in embeddings:
         db_embedding = torch.tensor(db_embedding)
         
         euclidean_distance = torch.sqrt(torch.sum((embedding - db_embedding) ** 2)).item()
-        
         similarity_cosine = cosine_similarity(embedding, db_embedding).item()
         
         if euclidean_distance < min_euclidean_distance:
@@ -77,10 +81,26 @@ for original_sentence, embedding in embeddings:
             max_cosine_similarity = similarity_cosine
             closest_cosine = (db_sentence, similarity_cosine)
     
+    end_time = time.time()
+    computation_times.append(end_time - start_time)
+    
     print(f"For the sentence: \"{original_sentence}\"")
     print(f"Closest (Euclidean): \"{closest_euclidean[0]}\" with distance {closest_euclidean[1]}")
     print(f"Closest (Cosine Similarity): \"{closest_cosine[0]}\" with similarity {closest_cosine[1]}")
     print()
+
+# Convert computation times to numpy array and compute statistics
+computation_times = np.array(computation_times)
+min_time = np.min(computation_times)
+max_time = np.max(computation_times)
+mean_time = np.mean(computation_times)
+std_dev_time = np.std(computation_times)
+
+# Print the results
+print(f"Minimum computation time: {min_time} seconds")
+print(f"Maximum computation time: {max_time} seconds")
+print(f"Average computation time: {mean_time} seconds")
+print(f"Standard deviation of computation time: {std_dev_time} seconds")
 
 #Close connection
 cursor.close()
