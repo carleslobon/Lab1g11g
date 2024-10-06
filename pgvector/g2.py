@@ -5,21 +5,15 @@ import torch
 import torch.nn.functional as F
 
 def mean_pooling(model_output, attention_mask):
-    token_embeddings = model_output[0] #First element of model_output contains all token embeddings
+    token_embeddings = model_output[0]  # Primera parte de model_output contiene todos los embeddings
     input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
     return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
-def cosine_similarity(embedding1, embedding2):
-    dot_product = torch.sum(embedding1 * embedding2)
-    norm1 = torch.sqrt(torch.sum(embedding1 ** 2))
-    norm2 = torch.sqrt(torch.sum(embedding2 ** 2))
-    return dot_product / (norm1 * norm2)
-
-#Connecting to the database
+# Conectando a la base de datos
 connection = connect(load_config())
 cursor = connection.cursor()
 
-#Sentences we chose
+# Frases que hemos elegido
 sentences_to_process = [
     "usually , he would be tearing around the living room , playing with his toys .",
     "but just one look at a minion sent him practically catatonic .",
@@ -36,7 +30,7 @@ sentences_to_process = [
 tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
-#Convert the 10 sentences to embeddings
+# Convertir las 10 frases a embeddings
 embeddings = []
 for sentence in sentences_to_process:
     encoded_input = tokenizer(sentence, return_tensors='pt')
@@ -45,43 +39,27 @@ for sentence in sentences_to_process:
     embedding = mean_pooling(model_output, encoded_input['attention_mask'])
     embeddings.append((sentence, embedding))
 
-#Compute the top-2 most similar sentences (among all other sentences) for each of them using two different distance metrics
+# Computar las 2 frases más similares (excluyendo la frase original) para cada una de ellas usando pgvector
 for original_sentence, embedding in embeddings:
-    #Convert each sentence to Float[]
+    # Convertir el embedding a formato que pgvector puede manejar
     float_embedding = embedding.numpy().flatten().tolist()
-    
-    # Select all sentences and embeddings from the database
-    cursor.execute("SELECT sentence, embedding FROM sentences")
-    all_sentences = cursor.fetchall()
-    
-    closest_euclidean = None
-    closest_cosine = None
-    min_euclidean_distance = float('inf')
-    max_cosine_similarity = -float('inf')
-    
-    for db_sentence, db_embedding in all_sentences:
-        if db_sentence == original_sentence:
-            continue
-        
-        db_embedding = torch.tensor(db_embedding)
-        
-        euclidean_distance = torch.sqrt(torch.sum((embedding - db_embedding) ** 2)).item()
-        
-        similarity_cosine = cosine_similarity(embedding, db_embedding).item()
-        
-        if euclidean_distance < min_euclidean_distance:
-            min_euclidean_distance = euclidean_distance
-            closest_euclidean = (db_sentence, euclidean_distance)
-        
-        if similarity_cosine > max_cosine_similarity:
-            max_cosine_similarity = similarity_cosine
-            closest_cosine = (db_sentence, similarity_cosine)
-    
+
+    # Ejecutar una consulta SQL para obtener las frases más cercanas usando pgvector, excluyendo la original
+    cursor.execute("""
+        SELECT sentence, embedding
+        FROM sentences_pg
+        WHERE sentence <> %s
+        ORDER BY embedding <-> %s::vector
+        LIMIT 2
+    """, (original_sentence, float_embedding))
+
+    closest_sentences = cursor.fetchall()
+
     print(f"For the sentence: \"{original_sentence}\"")
-    print(f"Closest (Euclidean): \"{closest_euclidean[0]}\" with distance {closest_euclidean[1]}")
-    print(f"Closest (Cosine Similarity): \"{closest_cosine[0]}\" with similarity {closest_cosine[1]}")
+    for db_sentence, db_embedding in closest_sentences:
+        print(f"Closest sentence: \"{db_sentence}\"")
     print()
 
-#Close connection
+# Cerrar conexión
 cursor.close()
 connection.close()
