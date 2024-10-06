@@ -1,34 +1,20 @@
-from datasets import load_dataset
 import chromadb
-from chromadb.config import Settings
-import time
 
-chroma_client = chromadb.Client()
+client = chromadb.Client()
 
-collection = chroma_client.get_or_create_collection(name="sentences")
-print("Collection created or retrieved")
+collection_name = "book_corpus_sentences"
+collection = client.create_collection(name=collection_name)
 
-ds = load_dataset("williamkgao/bookcorpus100mb")
-sentences = ds['train']['text'][:10000]
-print("Dataset loaded")
+with open('chroma/bookcorpus100mb.txt', 'r', encoding='utf-8') as file:
+    sentences = file.readlines()
 
-ids = [f"id{i}" for i in range(len(sentences))]
+sentences = [sentence.strip() for sentence in sentences][:10000]
 
-batch_size = 100
+for sentence in sentences:
+    collection.add(
+        documents=[sentence],
+        ids=[str(hash(sentence))]
+    )
 
-print("Starting insertion process...")
-start_time = time.time()
+print(f"Se han agregado {len(sentences)} frases a la colección '{collection_name}'.")
 
-for i in range(0, len(sentences), batch_size):
-    print(f"Preparing batch {i // batch_size + 1}")
-    batch_sentences = sentences[i:i + batch_size]
-    batch_ids = ids[i:i + batch_size]
-    print(f"Batch {i // batch_size + 1} ready for insertion")
-    try:
-        collection.upsert(documents=batch_sentences, ids=batch_ids)
-    except Exception as e:
-        print(f"Error: {e}")
-    print(f"Batch {i // batch_size + 1} inserted")
-
-end_time = time.time()
-print(f"Insertion completed in {end_time - start_time} seconds")

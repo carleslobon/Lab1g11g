@@ -1,20 +1,19 @@
 import chromadb
 
-# Inicializando el cliente de ChromaDB
-chroma_client = chromadb.Client()
+client = chromadb.Client()
 
-# Accediendo a la colección existente
-collection_name = "sentences"
-collection = chroma_client.get_collection(name=collection_name)
+collection_name = "book_corpus_sentences"
+collection = client.create_collection(name=collection_name)
 
-# Recuperar las primeras 5 frases
-num_sentences_to_retrieve = 5
-sentence_ids = [f"sentence_{i}" for i in range(num_sentences_to_retrieve)]
+with open('chroma/bookcorpus100mb.txt', 'r', encoding='utf-8') as file:
+    sentences = file.readlines()
 
-# Obtener los documentos de la colección
-retrieved_documents = collection.get(documents=sentence_ids)
+sentences = [sentence.strip() for sentence in sentences][:10000]
 
-# Mostrar las frases recuperadas
-print("Retrieved documents:")
-for doc in retrieved_documents:
-    print(doc)
+for sentence in sentences:
+    collection.add(
+        documents=[sentence],
+        ids=[str(hash(sentence))]
+    ) #This sentence automatically embeds all the phrases so we don't need any change in this code to embed the stored phrases
+
+print(f"Se han agregado {len(sentences)} frases a la colección '{collection_name}'.")
