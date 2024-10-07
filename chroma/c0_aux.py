@@ -27,7 +27,7 @@ for i in range(0, len(sentences), batch_size):
     batch_ids = ids[i:i + batch_size]
     print(f"Batch {i // batch_size + 1} ready for insertion")
     try:
-        collection.upsert(documents=batch_sentences, ids=batch_ids)
+        collection.add(documents=batch_sentences, ids=batch_ids)
     except Exception as e:
         print(f"Error: {e}")
     print(f"Batch {i // batch_size + 1} inserted")

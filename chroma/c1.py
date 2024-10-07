@@ -1,9 +1,9 @@
 import chromadb
 
-client = chromadb.Client()
+client = chromadb.PersistentClient(path = "./chroma_db")
 
 collection_name = "book_corpus_sentences"
-collection = client.create_collection(name=collection_name)
+collection = client.get_or_create_collection(name=collection_name)
 
 with open('chroma/bookcorpus100mb.txt', 'r', encoding='utf-8') as file:
     sentences = file.readlines()

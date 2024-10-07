@@ -1,6 +1,8 @@
 import chromadb
 import time
+import numpy as np
 import statistics
+from numpy.linalg import norm
 
 # Sentences we chose
 sentences_to_process = [
@@ -16,52 +18,45 @@ sentences_to_process = [
     "`` beau ? ''"
 ]
 
-client = chromadb.Client()
+def cosine_similarity(vec1, vec2):
+    return np.dot(vec1, vec2) / (norm(vec1) * norm(vec2))
+
+client = chromadb.PersistentClient(path = "./chroma_db")
 
 collection_name = "book_corpus_sentences"
-collection = client.create_collection(name=collection_name)
+collection = client.get_collection(name=collection_name)
 
-with open('chroma/bookcorpus100mb.txt', 'r', encoding='utf-8') as file:
-    sentences = file.readlines()
-
-sentences = [sentence.strip() for sentence in sentences][:10000]
-
-add_times = []
 query_times = []
-
-for sentence in sentences:
-    start_time = time.time()
-    collection.add(
-        documents=[sentence],
-        ids=[str(hash(sentence))]
-    )
-    end_time = time.time()
-    add_times.append(end_time - start_time)
-
-print(f"Estadísticas de tiempo de collection.add:")
-print(f"Tiempo máximo: {max(add_times):.4f} segundos")
-print(f"Tiempo mínimo: {min(add_times):.4f} segundos")
-print(f"Tiempo promedio: {sum(add_times) / len(add_times):.4f} segundos")
-print(f"Desviación estándar: {statistics.stdev(add_times):.4f} segundos\n")
-
 
 for sentence in sentences_to_process:
     start_time = time.time()
     results = collection.query(
         query_texts=[sentence],
-        n_results=2
+        n_results=3,
     )
+
+    query_embedding = results['distances'][0]
+    all_embeddings = results['distances']
+
+    cos_similarities = [cosine_similarity(query_embedding, emb) for emb in all_embeddings]
+    
+    sorted_similarities = sorted(zip(results['documents'], cos_similarities), key=lambda x: x[1], reverse=True)
+
     end_time = time.time()
     query_times.append(end_time - start_time)
 
     print(f"Para la sentencia: '{sentence}'")
-    print("Sentencias más similares:")
-    for similar_doc in results['documents']:
+    print("Sentencias más similares euclidianas:")
+    for similar_doc in results['documents'][:3]:
         print(f" - {similar_doc}")
+
+    print(f"Para la sentencia: '{sentence}'")
+    print("Sentencias más similares por coseno:")
+    for doc, similarity in sorted_similarities[:3]: 
+        print(f" - {doc} (similaridad cosinus: {similarity:.4f})")
 
 print(f"\nEstadísticas de tiempo de collection.query:")
 print(f"Tiempo máximo: {max(query_times):.4f} segundos")
 print(f"Tiempo mínimo: {min(query_times):.4f} segundos")
 print(f"Tiempo promedio: {sum(query_times) / len(query_times):.4f} segundos")
 print(f"Desviación estándar: {statistics.stdev(query_times):.4f} segundos")
-
