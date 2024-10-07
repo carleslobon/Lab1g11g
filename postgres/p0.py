@@ -19,6 +19,7 @@ connection.commit()
 # Charging the sentences
 ds = load_dataset("williamkgao/bookcorpus100mb")
 sentences = ds['train']['text'][:10000]
+print(sentences[0])
 
 # List to store insertion times
 insertion_times = []
@@ -35,14 +36,12 @@ for sentence in sentences:
 cursor.close()
 connection.close()
 
-# Convert to numpy array and compute statistics
 insertion_times = np.array(insertion_times)
 min_time = np.min(insertion_times)
 max_time = np.max(insertion_times)
 mean_time = np.mean(insertion_times)
 std_dev_time = np.std(insertion_times)
 
-# Print the results
 print(f"Minimum insertion time: {min_time} seconds")
 print(f"Maximum insertion time: {max_time} seconds")
 print(f"Average insertion time: {mean_time} seconds")

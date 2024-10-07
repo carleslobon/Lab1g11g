@@ -8,7 +8,7 @@ import time
 import numpy as np
 
 def mean_pooling(model_output, attention_mask):
-    token_embeddings = model_output[0] #First element of model_output contains all token embeddings
+    token_embeddings = model_output[0] # First element of model_output contains all token embeddings
     input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
     return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
@@ -43,14 +43,10 @@ for i in range(0, len(sentences), group_sz):
 
     start_time = time.time()
     for id, embedding in zip(batch_ids, embeddings):
-        # Convert the embedding to numpy array and then to binary
         float_embedding = embedding.numpy().flatten().tolist()
-        
-        # Update the sentence with its embedding
         cursor.execute("UPDATE sentences SET embedding = ARRAY[%s]::FLOAT[] WHERE id = %s", (float_embedding, id))
     end_time = time.time()
     
-    # Append the time taken for this batch
     update_times.append(end_time - start_time)
 
 connection.commit()
@@ -59,14 +55,12 @@ connection.commit()
 cursor.close()
 connection.close()
 
-# Convert to numpy array and compute statistics
 update_times = np.array(update_times)
 min_time = np.min(update_times)
 max_time = np.max(update_times)
 mean_time = np.mean(update_times)
 std_dev_time = np.std(update_times)
 
-# Print the results
 print(f"Minimum update time: {min_time} seconds")
 print(f"Maximum update time: {max_time} seconds")
 print(f"Average update time: {mean_time} seconds")

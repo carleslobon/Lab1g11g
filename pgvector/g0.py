@@ -12,14 +12,13 @@ cursor.execute("DROP TABLE IF EXISTS sentences_pg")
 cursor.execute("""CREATE TABLE sentences_pg
                (id SERIAL PRIMARY KEY,
                sentence TEXT,
-               embedding vector(384))""")
+               embedding VECTOR(384))""")
 connection.commit()
 
 #Charging the sentences
 ds = load_dataset("williamkgao/bookcorpus100mb")
 sentences = ds['train']['text'][:10000]
 
-#Inserting to the database and calculing time
 start_time = time.time()
 for sentence in sentences:
     cursor.execute("INSERT INTO sentences_pg (sentence) VALUES (%s)", (sentence,))
