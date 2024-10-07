@@ -1,6 +1,6 @@
 import chromadb
 import time
-import statistics  # Para calcular la desviación estándar
+import statistics
 
 # Sentences we chose
 sentences_to_process = [
@@ -16,58 +16,49 @@ sentences_to_process = [
     "`` beau ? ''"
 ]
 
-# Inicializar el cliente de ChromaDB
 client = chromadb.Client()
 
-# Crear una colección
 collection_name = "book_corpus_sentences"
 collection = client.create_collection(name=collection_name)
 
-# Cargar las frases desde el archivo .txt
 with open('chroma/bookcorpus100mb.txt', 'r', encoding='utf-8') as file:
     sentences = file.readlines()
 
-# Limpiar y limitar a las primeras 10,000 frases
 sentences = [sentence.strip() for sentence in sentences][:10000]
 
-# Listas para almacenar los tiempos de cada operación
 add_times = []
 query_times = []
 
-# Agregar las frases a la colección y calcular los tiempos
 for sentence in sentences:
-    start_time = time.time()  # Inicio del tiempo de add
+    start_time = time.time()
     collection.add(
         documents=[sentence],
         ids=[str(hash(sentence))]
-    )  # Este add automáticamente genera embeddings
-    end_time = time.time()  # Fin del tiempo de add
+    )
+    end_time = time.time()
     add_times.append(end_time - start_time)
 
-# Mostrar estadísticas de tiempo de collection.add
 print(f"Estadísticas de tiempo de collection.add:")
 print(f"Tiempo máximo: {max(add_times):.4f} segundos")
 print(f"Tiempo mínimo: {min(add_times):.4f} segundos")
 print(f"Tiempo promedio: {sum(add_times) / len(add_times):.4f} segundos")
 print(f"Desviación estándar: {statistics.stdev(add_times):.4f} segundos\n")
 
-# Buscar las sentencias más similares para cada sentencia en sentences_to_process
+
 for sentence in sentences_to_process:
-    start_time = time.time()  # Inicio del tiempo de query
+    start_time = time.time()
     results = collection.query(
         query_texts=[sentence],
-        n_results=2  # Obtener las 2 sentencias más similares
+        n_results=2
     )
-    end_time = time.time()  # Fin del tiempo de query
+    end_time = time.time()
     query_times.append(end_time - start_time)
 
-    # Mostrar resultados
     print(f"Para la sentencia: '{sentence}'")
     print("Sentencias más similares:")
     for similar_doc in results['documents']:
         print(f" - {similar_doc}")
 
-# Mostrar estadísticas de tiempo de collection.query
 print(f"\nEstadísticas de tiempo de collection.query:")
 print(f"Tiempo máximo: {max(query_times):.4f} segundos")
 print(f"Tiempo mínimo: {min(query_times):.4f} segundos")
