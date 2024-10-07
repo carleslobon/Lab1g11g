@@ -7,7 +7,7 @@ import time
 import numpy as np
 
 def mean_pooling(model_output, attention_mask):
-    token_embeddings = model_output[0] #First element of model_output contains all token embeddings
+    token_embeddings = model_output[0] # First element of model_output contains all token embeddings
     input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
     return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
@@ -17,11 +17,11 @@ def cosine_similarity(embedding1, embedding2):
     norm2 = torch.sqrt(torch.sum(embedding2 ** 2))
     return dot_product / (norm1 * norm2)
 
-#Connecting to the database
+# Connecting to the database
 connection = connect(load_config())
 cursor = connection.cursor()
 
-#Sentences we chose
+# Sentences we chose
 sentences_to_process = [
     "usually , he would be tearing around the living room , playing with his toys .",
     "but just one look at a minion sent him practically catatonic .",
@@ -38,7 +38,7 @@ sentences_to_process = [
 tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
-#Convert the 10 sentences to embeddings
+# Convert the 10 sentences to embeddings
 embeddings = []
 for sentence in sentences_to_process:
     encoded_input = tokenizer(sentence, return_tensors='pt')
@@ -50,7 +50,7 @@ for sentence in sentences_to_process:
 # List to store computation times
 computation_times = []
 
-#Compute the top-2 most similar sentences (among all other sentences) for each of them using two different distance metrics
+# Compute the top-2 most similar sentences (among all other sentences) for each of them using two different distance metrics
 for original_sentence, embedding in embeddings:
     float_embedding = embedding.numpy().flatten().tolist()
     
@@ -89,19 +89,17 @@ for original_sentence, embedding in embeddings:
     print(f"Closest (Cosine Similarity): \"{closest_cosine[0]}\" with similarity {closest_cosine[1]}")
     print()
 
-# Convert computation times to numpy array and compute statistics
 computation_times = np.array(computation_times)
 min_time = np.min(computation_times)
 max_time = np.max(computation_times)
 mean_time = np.mean(computation_times)
 std_dev_time = np.std(computation_times)
 
-# Print the results
 print(f"Minimum computation time: {min_time} seconds")
 print(f"Maximum computation time: {max_time} seconds")
 print(f"Average computation time: {mean_time} seconds")
 print(f"Standard deviation of computation time: {std_dev_time} seconds")
 
-#Close connection
+# Close connection
 cursor.close()
 connection.close()
