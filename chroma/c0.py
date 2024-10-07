@@ -1,20 +1,23 @@
-from datasets import load_dataset
 import chromadb
-import time
 
-chroma_client = chromadb.Client()
+client = chromadb.PersistentClient(path = "./chroma_db")
 
-collection = chroma_client.get_or_create_collection(name="sentences")
-print(collection)
+collection_name = "book_corpus_sentences"
+collection = client.get_or_create_collection(name=collection_name)
 
-ds = load_dataset("williamkgao/bookcorpus100mb")
-sentences = ds['train']['text'][:10000]
+with open('chroma/bookcorpus100mb.txt', 'r', encoding='utf-8') as file:
+    sentences = file.readlines()
 
-ids = [f"id{i}" for i in range(len(sentences))]
 
-start_time = time.time()
-for sentence, id in zip(sentences, ids):
-    collection.upsert(documents=[sentence], ids=[id])
-end_time = time.time()
+sentences = [sentence.strip() for sentence in sentences][:10000]
 
-print(f"Total insertion time: {end_time - start_time} seconds")
+print(sentences[0])
+
+for sentence in sentences:
+    collection.add(
+        documents=[sentence],
+        ids=[str(hash(sentence))]
+    )
+
+print(f"Se han agregado {len(sentences)} frases a la colección '{collection_name}'.")
+
